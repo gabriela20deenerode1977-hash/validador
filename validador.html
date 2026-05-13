@@ -13,10 +13,6 @@ body {
   font-family:Arial;
 }
 
-h1 {
-  margin-top:20px;
-}
-
 video {
   width:90%;
   max-width:400px;
@@ -31,116 +27,105 @@ video {
   font-weight:bold;
 }
 
-.ok {
-  color:#00ff00;
-}
-
-.error {
-  color:red;
-}
+.ok { color:#00ff00; }
+.error { color:red; }
 
 button {
-  margin-top:15px;
+  margin-top:10px;
   padding:10px 20px;
   border:none;
   border-radius:8px;
   background:#ffcc00;
-  font-size:16px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>📷 Escanear QR</h1>
+<h2>📷 Escanear QR</h2>
 
-<video id="video" autoplay></video>
+<video id="video" playsinline></video>
 
 <br>
 <button onclick="cambiarCamara()">🔄 Cambiar cámara</button>
 
-<div id="resultado"></div>
+<div id="resultado">Apuntá al QR</div>
 
-<!-- LIBRERÍA QR -->
-<script src="https://unpkg.com/jsqr"></script>
+<!-- LIBRERÍA QR (MEJOR) -->
+<script src="https://cdn.jsdelivr.net/npm/qr-scanner/qr-scanner.umd.min.js"></script>
 
 <script>
-let video = document.getElementById("video");
-let resultado = document.getElementById("resultado");
-let currentCamera = "environment";
-let canvas = document.createElement("canvas");
-let ctx = canvas.getContext("2d");
+const video = document.getElementById("video");
+const resultado = document.getElementById("resultado");
 
-function iniciarCamara() {
-  navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: currentCamera }
+let currentCamera = "environment";
+let scanner;
+
+function iniciarScanner() {
+
+  if (scanner) {
+    scanner.stop();
+  }
+
+  scanner = new QrScanner(
+    video,
+    result => {
+      validarQR(result.data);
+    },
+    {
+      preferredCamera: currentCamera,
+      highlightScanRegion: true,
+      highlightCodeOutline: true
     }
-  })
-  .then(stream => {
-    video.srcObject = stream;
-    video.setAttribute("playsinline", true);
-    video.play();
-    requestAnimationFrame(scanQR);
-  })
-  .catch(err => {
-    resultado.innerText = "❌ Error cámara";
-    console.log(err);
-  });
+  );
+
+  scanner.start();
 }
 
 function cambiarCamara() {
   currentCamera = currentCamera === "environment" ? "user" : "environment";
-
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
-
-  iniciarCamara();
-}
-
-function scanQR() {
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    canvas.height = video.videoHeight;
-    canvas.width = video.videoWidth;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let code = jsQR(imageData.data, imageData.width, imageData.height);
-
-    if (code) {
-      validarQR(code.data);
-    }
-  }
-  requestAnimationFrame(scanQR);
+  iniciarScanner();
 }
 
 function validarQR(data) {
+
+  scanner.stop(); // 🔥 evita lecturas múltiples
+
   resultado.innerText = "⏳ Validando...";
   resultado.className = "";
 
   fetch("https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec?codigo=" + data)
-    .then(res => res.text())
-    .then(res => {
-      if (res.includes("VALIDO")) {
-        resultado.innerText = "✅ CUPÓN VÁLIDO";
-        resultado.className = "ok";
+  .then(res => res.text())
+  .then(res => {
 
-        // vibración
-        if (navigator.vibrate) navigator.vibrate(200);
+    if (res.includes("VALIDO")) {
+      resultado.innerText = "✅ CUPÓN VÁLIDO";
+      resultado.className = "ok";
 
-      } else {
-        resultado.innerText = "❌ CUPÓN USADO / INVÁLIDO";
-        resultado.className = "error";
-      }
-    })
-    .catch(() => {
-      resultado.innerText = "❌ Error conexión";
+      if (navigator.vibrate) navigator.vibrate(200);
+
+    } else {
+      resultado.innerText = "❌ CUPÓN USADO / INVÁLIDO";
       resultado.className = "error";
-    });
+    }
+
+    // 🔁 vuelve a escanear en 3 seg
+    setTimeout(() => {
+      resultado.innerText = "Apuntá al QR";
+      iniciarScanner();
+    }, 3000);
+
+  })
+  .catch(() => {
+    resultado.innerText = "❌ Error conexión";
+    resultado.className = "error";
+
+    setTimeout(() => iniciarScanner(), 3000);
+  });
 }
 
-iniciarCamara();
+// iniciar
+iniciarScanner();
 </script>
 
 </body>
