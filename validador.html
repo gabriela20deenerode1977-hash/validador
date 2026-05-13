@@ -6,81 +6,141 @@
 <title>Validador PRO</title>
 
 <style>
-body{
+body {
   background:#111;
   color:white;
   text-align:center;
   font-family:Arial;
 }
 
-#reader{
-  width:320px;
-  margin:20px auto;
+h1 {
+  margin-top:20px;
 }
 
-#resultado{
+video {
+  width:90%;
+  max-width:400px;
+  border-radius:10px;
   margin-top:20px;
-  font-size:24px;
+  border:3px solid #0f0;
+}
+
+#resultado {
+  margin-top:20px;
+  font-size:22px;
   font-weight:bold;
 }
 
-.ok{color:#00e676;}
-.bad{color:#ff5252;}
+.ok {
+  color:#00ff00;
+}
+
+.error {
+  color:red;
+}
+
+button {
+  margin-top:15px;
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  background:#ffcc00;
+  font-size:16px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>ESCANEAR CUPÓN</h2>
+<h1>📷 Escanear QR</h1>
 
-<div id="reader"></div>
+<video id="video" autoplay></video>
 
-<h3 id="resultado">Esperando escaneo...</h3>
+<br>
+<button onclick="cambiarCamara()">🔄 Cambiar cámara</button>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<div id="resultado"></div>
+
+<!-- LIBRERÍA QR -->
+<script src="https://unpkg.com/jsqr"></script>
 
 <script>
-const URL = "https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec";
+let video = document.getElementById("video");
+let resultado = document.getElementById("resultado");
+let currentCamera = "environment";
+let canvas = document.createElement("canvas");
+let ctx = canvas.getContext("2d");
 
-const resultado = document.getElementById("resultado");
-
-async function validar(codigo){
-
-  resultado.innerText = "Validando...";
-
-  try{
-    const res = await fetch(URL + "?codigo=" + codigo);
-    const txt = await res.text();
-
-    if(txt.includes("VALIDO")){
-      resultado.innerText = "✅ " + txt;
-      resultado.className = "ok";
-    }else{
-      resultado.innerText = "❌ " + txt;
-      resultado.className = "bad";
+function iniciarCamara() {
+  navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: currentCamera }
     }
-
-  }catch{
-    resultado.innerText = "Error de conexión";
-    resultado.className = "bad";
-  }
+  })
+  .then(stream => {
+    video.srcObject = stream;
+    video.setAttribute("playsinline", true);
+    video.play();
+    requestAnimationFrame(scanQR);
+  })
+  .catch(err => {
+    resultado.innerText = "❌ Error cámara";
+    console.log(err);
+  });
 }
 
-function onScanSuccess(decodedText) {
-  validar(decodedText);
+function cambiarCamara() {
+  currentCamera = currentCamera === "environment" ? "user" : "environment";
+
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
+
+  iniciarCamara();
 }
 
-const qr = new Html5Qrcode("reader");
+function scanQR() {
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-Html5Qrcode.getCameras().then(devices => {
-  if (devices.length) {
-    qr.start(
-      devices[0].id,
-      { fps: 10, qrbox: 250 },
-      onScanSuccess
-    );
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      validarQR(code.data);
+    }
   }
-});
+  requestAnimationFrame(scanQR);
+}
+
+function validarQR(data) {
+  resultado.innerText = "⏳ Validando...";
+  resultado.className = "";
+
+  fetch("https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec?codigo=" + data)
+    .then(res => res.text())
+    .then(res => {
+      if (res.includes("VALIDO")) {
+        resultado.innerText = "✅ CUPÓN VÁLIDO";
+        resultado.className = "ok";
+
+        // vibración
+        if (navigator.vibrate) navigator.vibrate(200);
+
+      } else {
+        resultado.innerText = "❌ CUPÓN USADO / INVÁLIDO";
+        resultado.className = "error";
+      }
+    })
+    .catch(() => {
+      resultado.innerText = "❌ Error conexión";
+      resultado.className = "error";
+    });
+}
+
+iniciarCamara();
 </script>
 
 </body>
