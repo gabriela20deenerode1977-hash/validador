@@ -1,190 +1,143 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Validador PRO</title>
-
-<style>
-body {
-  background:#111;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-  transition:0.3s;
-}
-
-video {
-  width:90%;
-  max-width:400px;
-  border-radius:12px;
-  margin-top:20px;
-  border:3px solid #0f0;
-}
-
-#resultado {
-  margin-top:20px;
-  font-size:22px;
-  font-weight:bold;
-}
-
-.ok { color:#00ff00; }
-.error { color:#ff4444; }
-
-button {
-  margin-top:10px;
-  padding:12px 20px;
-  border:none;
-  border-radius:10px;
-  background:#ffd600;
-  font-size:16px;
-  cursor:pointer;
-}
-
-input {
-  margin-top:15px;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  width:80%;
-  max-width:300px;
-  text-align:center;
-  font-size:16px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador GNC - Estación</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root { --accent: #f1c40f; --bg: #1a1a1a; --card: #2d2d2d; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; }
+        .card { background: var(--card); padding: 20px; border-radius: 15px; text-align: center; max-width: 450px; margin: auto; }
+        #reader { width: 100%; border-radius: 10px; background: #000; margin: 15px 0; min-height: 250px; }
+        .calc-box { background: #3d3d3d; padding: 15px; border-radius: 10px; text-align: left; margin-top: 15px; }
+        input { width: 100%; padding: 15px; border-radius: 8px; border: none; font-size: 22px; background: #111; color: #fff; box-sizing: border-box; margin: 10px 0; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 18px; }
+        .total { font-size: 26px; font-weight: bold; color: #2ecc71; border-top: 1px solid #555; padding-top: 10px; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-scan { background: var(--accent); color: #000; }
+        .btn-save { background: #2ecc71; color: white; }
+        #seccion-cobro, #seccion-stats { display: none; }
+        .hidden { display: none; }
+    </style>
 </head>
-
 <body>
 
-<h2>📷 Escanear o ingresar código</h2>
+<div class="card">
+    <div id="seccion-scanner">
+        <h2>Validar Cupón GNC</h2>
+        <div id="reader"></div>
+        <button id="btn-iniciar" class="btn btn-scan" onclick="startScanner()">📷 ACTIVAR CÁMARA</button>
+        <button class="btn" style="background:#3498db; color:white; margin-top:20px;" onclick="verStats()">📊 CIERRE DE TURNO</button>
+    </div>
 
-<video id="video" playsinline></video>
+    <div id="seccion-cobro">
+        <h2 style="color: var(--accent);">Cupón Validado</h2>
+        <div class="calc-box">
+            <div class="row"><span>🚗 Patente:</span> <b id="out-patente">---</b></div>
+            <div class="row"><span>🎁 Descuento:</span> <b id="out-premio">0%</b></div>
+            <hr>
+            <label>Monto Surtidor ($):</label>
+            <input type="number" id="in-monto" placeholder="Ej: 5000" oninput="recalcular()">
+            <div class="row"><span>Ahorro:</span> <span id="out-ahorro" style="color:#e74c3c">-$0</span></div>
+            <div class="row total"><span>A PAGAR:</span> <span id="out-final">$0</span></div>
+        </div>
+        <button class="btn btn-save" onclick="guardarVenta()">💾 REGISTRAR</button>
+        <button class="btn" style="background:#666; color:white" onclick="cancelar()">VOLVER</button>
+    </div>
 
-<br>
-<button onclick="cambiarCamara()">🔄 Cambiar cámara</button>
-
-<br>
-
-<input id="codigoManual" placeholder="Ingresar código">
-<br>
-<button onclick="validarManual()">VALIDAR CÓDIGO</button>
-
-<div id="resultado">Inicializando cámara...</div>
-
-<script src="https://cdn.jsdelivr.net/npm/qr-scanner/qr-scanner.umd.min.js"></script>
+    <div id="seccion-stats">
+        <h2>Resumen del Turno</h2>
+        <div class="calc-box" style="text-align:center;">
+            <p>Total Descontado:</p>
+            <h1 id="stat-desc" style="color:#e74c3c; margin:5px 0;">$0</h1>
+            <p>Total en Caja:</p>
+            <h1 id="stat-neto" style="color:#2ecc71; margin:5px 0;">$0</h1>
+            <p>Cupones: <b id="stat-cant">0</b></p>
+        </div>
+        <button class="btn btn-scan" onclick="cancelar()">VOLVER</button>
+        <button class="btn" style="background:#c0392b; color:white; margin-top:30px;" onclick="resetTurno()">REINICIAR TURNO</button>
+    </div>
+</div>
 
 <script>
-const URL = "https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec";
+    let scanner;
+    let cupoActual = {};
+    let ahorroGlobal = 0;
+    let netoGlobal = 0;
 
-const video = document.getElementById("video");
-const resultado = document.getElementById("resultado");
-
-let scanner;
-let currentCamera = "environment";
-
-// INICIAR SCANNER SEGURO
-function iniciarScanner(){
-
-  if(scanner){
-    scanner.stop();
-  }
-
-  scanner = new QrScanner(
-    video,
-    result => procesarValidacion(result.data),
-    {
-      preferredCamera: currentCamera,
-      highlightScanRegion: true,
-      highlightCodeOutline: true
-    }
-  );
-
-  // 🔥 CONTROL DE CÁMARA
-  QrScanner.hasCamera().then(hasCamera => {
-
-    if(!hasCamera){
-      resultado.innerText = "❌ No se detecta cámara";
-      return;
+    function startScanner() {
+        document.getElementById('btn-iniciar').classList.add('hidden');
+        scanner = new Html5Qrcode("reader");
+        
+        scanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: 250 },
+            (text) => {
+                scanner.stop().then(() => {
+                    procesarQR(text);
+                });
+            },
+            (err) => { }
+        ).catch(err => {
+            alert("Error: No se pudo acceder a la cámara.");
+            document.getElementById('btn-iniciar').classList.remove('hidden');
+        });
     }
 
-    scanner.start().then(() => {
-      resultado.innerText = "Apuntá al QR";
-    }).catch(err => {
-      resultado.innerText = "❌ Permiso de cámara denegado";
-      console.log(err);
-    });
-
-  });
-}
-
-// CAMBIAR CAMARA
-function cambiarCamara(){
-  currentCamera = currentCamera === "environment" ? "user" : "environment";
-  iniciarScanner();
-}
-
-// VALIDAR MANUAL
-function validarManual(){
-  const codigo = document.getElementById("codigoManual").value.trim();
-
-  if(!codigo){
-    alert("Ingresá un código");
-    return;
-  }
-
-  procesarValidacion(codigo);
-}
-
-// PROCESAR VALIDACIÓN
-function procesarValidacion(codigo){
-
-  if(scanner) scanner.stop();
-
-  resultado.innerText = "⏳ Validando...";
-  resultado.className = "";
-
-  fetch(URL + "?codigo=" + codigo)
-  .then(res => res.text())
-  .then(res => {
-
-    if(res.includes("VALIDO")){
-
-      document.body.style.background = "#0f0";
-      resultado.innerText = "✅ VALIDADO";
-      resultado.style.fontSize = "36px";
-      resultado.className = "ok";
-
-      if(navigator.vibrate) navigator.vibrate([200,100,200]);
-
-    }else{
-
-      document.body.style.background = "#900";
-      resultado.innerText = "❌ RECHAZADO";
-      resultado.style.fontSize = "36px";
-      resultado.className = "error";
+    function procesarQR(text) {
+        try {
+            const data = {};
+            text.split('|').forEach(item => {
+                const [k, v] = item.split(':');
+                data[k] = v;
+            });
+            cupoActual = data;
+            document.getElementById('out-patente').innerText = data.PAT || "---";
+            document.getElementById('out-premio').innerText = data.PREMIO || "0%";
+            document.getElementById('seccion-scanner').style.display = 'none';
+            document.getElementById('seccion-cobro').style.display = 'block';
+        } catch(e) {
+            alert("QR inválido.");
+            cancelar();
+        }
     }
 
-    // RESET
-    setTimeout(()=>{
-      document.body.style.background = "#111";
-      resultado.innerText = "Listo para validar";
-      resultado.style.fontSize = "22px";
-      document.getElementById("codigoManual").value = "";
-      iniciarScanner();
-    },3000);
+    function recalcular() {
+        const total = parseFloat(document.getElementById('in-monto').value) || 0;
+        const descPct = parseInt(cupoActual.PREMIO) || 0;
+        ahorroGlobal = (total * descPct) / 100;
+        netoGlobal = total - ahorroGlobal;
+        document.getElementById('out-ahorro').innerText = "-$" + ahorroGlobal.toFixed(2);
+        document.getElementById('out-final').innerText = "$" + netoGlobal.toFixed(2);
+    }
 
-  })
-  .catch(()=>{
-    resultado.innerText = "❌ Error conexión";
-    resultado.className = "error";
+    function guardarVenta() {
+        if (netoGlobal <= 0) return alert("Ingresá el monto");
+        let s = JSON.parse(localStorage.getItem('stats_gnc') || '{"d":0, "n":0, "c":0}');
+        s.d += ahorroGlobal; s.n += netoGlobal; s.c += 1;
+        localStorage.setItem('stats_gnc', JSON.stringify(s));
+        alert("Venta guardada");
+        cancelar();
+    }
 
-    setTimeout(()=>iniciarScanner(),3000);
-  });
-}
+    function verStats() {
+        let s = JSON.parse(localStorage.getItem('stats_gnc') || '{"d":0, "n":0, "c":0}');
+        document.getElementById('stat-desc').innerText = "$" + s.d.toFixed(2);
+        document.getElementById('stat-neto').innerText = "$" + s.n.toFixed(2);
+        document.getElementById('stat-cant').innerText = s.c;
+        document.getElementById('seccion-scanner').style.display = 'none';
+        document.getElementById('seccion-stats').style.display = 'block';
+    }
 
-// START
-iniciarScanner();
+    function resetTurno() {
+        if(confirm("¿Borrar datos del turno?")) {
+            localStorage.setItem('stats_gnc', '{"d":0, "n":0, "c":0}');
+            verStats();
+        }
+    }
+
+    function cancelar() { location.reload(); }
 </script>
-
 </body>
 </html>
