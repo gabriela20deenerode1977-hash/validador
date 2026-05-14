@@ -3,67 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador GNC - Flujo de Caja</title>
+    <title>Validador GNC - Flujo Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 10px; text-align: center; color: #333; }
         .container { max-width: 450px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 8px solid #004a99; }
         h2 { color: #004a99; margin-bottom: 10px; }
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; margin-bottom: 10px; border: 2px solid #ddd; }
-        
         .step-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin: 10px 0; text-align: left; border: 1px solid #e9ecef; }
         .step-disabled { opacity: 0.4; pointer-events: none; }
-        
         label { display: block; font-size: 0.85em; color: #666; margin-bottom: 4px; font-weight: bold; }
         input { width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 10px; font-size: 20px; box-sizing: border-box; outline: none; }
-        
         .result-box { background: #e7f3ff; padding: 15px; border-radius: 10px; margin-top: 10px; border: 2px solid #004a99; text-align: center; display: none; }
         .total-text { font-size: 1.6em; font-weight: bold; color: #004a99; }
         .discount-text { color: #dc3545; font-size: 1.1em; font-weight: bold; }
-
-        .controls { display: flex; gap: 8px; margin-bottom: 15px; }
-        button { border: none; padding: 15px; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .btn-scan { background: #004a99; color: white; flex: 2; }
-        .btn-confirm { background: #28a745; color: white; width: 100%; margin-top: 10px; font-size: 18px; }
-        .btn-export { background: #17a2b8; color: white; width: 100%; margin-top: 20px; }
-        
+        .btn-scan { background: #004a99; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 15px; }
+        .btn-confirm { background: #28a745; color: white; width: 100%; border: none; padding: 15px; border-radius: 10px; margin-top: 10px; font-size: 18px; font-weight: bold; }
+        .btn-export { background: #17a2b8; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; margin-top: 20px; font-weight: bold; }
         .history { margin-top: 20px; text-align: left; }
-        #list { max-height: 150px; overflow-y: auto; background: #fff; font-size: 0.8em; }
+        #list { max-height: 150px; overflow-y: auto; background: #fff; font-size: 0.8em; border-radius: 8px; }
         .history-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-        .alert { display: none; padding: 10px; border-radius: 8px; margin-bottom: 10px; background: #f8d7da; color: #721c24; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>⛽ Validador GNC</h2>
-    <div id="msg-error" class="alert"></div>
     <div id="reader"></div>
-    
-    <div class="controls">
-        <button class="btn-scan" onclick="startScanner()">1. ESCANEAR QR</button>
-    </div>
+    <button class="btn-scan" onclick="startScanner()">1. ESCANEAR CUPÓN</button>
 
     <div id="step-monto" class="step-box step-disabled">
-        <label>Cupón Detectado:</label>
+        <label>Porcentaje Ganado:</label>
         <input type="text" id="cuponValor" readonly style="background:#eee; margin-bottom:10px; color:#004a99; font-weight:bold;">
         
-        <label>Importe del Surtidor ($):</label>
-        <input type="number" id="montoCarga" placeholder="0.00" oninput="calcular()">
+        <label>Importe Surtidor ($):</label>
+        <input type="number" id="montoCarga" placeholder="Ej: 5000" oninput="calcular()">
         
         <div id="result-display" class="result-box">
-            <div class="discount-text">Descuento: -$<span id="txtDescuento">0</span></div>
-            <div class="total-text">A COBRAR: $<span id="txtTotal">0</span></div>
-            <button class="btn-confirm" onclick="finalizarCliente()">✅ FINALIZAR Y GUARDAR</button>
+            <div class="discount-text">Descuento aplicado: -$<span id="txtDescuento">0</span></div>
+            <div class="total-text">TOTAL A COBRAR: $<span id="txtTotal">0</span></div>
+            <button class="btn-confirm" onclick="finalizarCliente()">✅ GUARDAR Y SIGUIENTE</button>
         </div>
     </div>
 
-    <button class="btn-export" onclick="exportarHistorial()">📊 EXPORTAR RENDICIÓN DEL TURNO</button>
+    <button class="btn-export" onclick="exportarHistorial()">📊 DESCARGAR RENDICIÓN</button>
 
     <div class="history">
         <h3 style="font-size: 0.9em; display:flex; justify-content:space-between;">
-            Historial de Turno 
-            <button onclick="clearHistory()" style="background:#dc3545; color:white; padding:2px 5px; font-size:10px;">RESET TURNO</button>
+            Historial del Turno 
+            <button onclick="clearHistory()" style="background:#dc3545; color:white; padding:3px 8px; font-size:10px; border:none; border-radius:4px;">BORRAR TODO</button>
         </h3>
         <div id="list"></div>
     </div>
@@ -76,8 +64,11 @@
     let currentQR = "";
 
     function startScanner() {
-        document.getElementById('msg-error').style.display = 'none';
-        if (html5QrCode) html5QrCode.stop().then(() => doStart()); else doStart();
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => doStart());
+        } else {
+            doStart();
+        }
     }
 
     function doStart() {
@@ -86,21 +77,30 @@
     }
 
     function onScanSuccess(decodedText) {
-        let history = JSON.parse(localStorage.getItem('gnc_turno') || '[]');
-        if (history.some(item => item.code === decodedText)) {
-            alert("❌ ESTE QR YA FUE USADO EN ESTE TURNO");
+        let history = JSON.parse(localStorage.getItem('gnc_turno_v3') || '[]');
+        
+        // Extraer solo el ID del QR para comparar duplicados
+        let idQR = decodedText.split('|')[0]; 
+
+        if (history.some(item => item.id === idQR)) {
+            alert("❌ ESTE CUPÓN YA FUE USADO");
             return;
         }
 
         document.getElementById('beep').play();
-        currentQR = decodedText;
-        let porcentaje = decodedText.match(/\d+/);
+        currentQR = idQR;
+
+        // BUSCAR EL PORCENTAJE (Busca el número que está pegado al %)
+        let match = decodedText.match(/(\d+)%/);
         
-        if (porcentaje) {
-            document.getElementById('cuponValor').value = porcentaje[0] + "%";
+        if (match) {
+            let porcentaje = match[1]; 
+            document.getElementById('cuponValor').value = porcentaje + "%";
             document.getElementById('step-monto').classList.remove('step-disabled');
             document.getElementById('montoCarga').focus();
             html5QrCode.stop();
+        } else {
+            alert("No se detectó el porcentaje en el QR");
         }
     }
 
@@ -119,51 +119,51 @@
     }
 
     function finalizarCliente() {
-        let history = JSON.parse(localStorage.getItem('gnc_turno') || '[]');
+        let history = JSON.parse(localStorage.getItem('gnc_turno_v3') || '[]');
         history.unshift({
-            code: currentQR,
+            id: currentQR,
             porc: document.getElementById('cuponValor').value,
             carga: document.getElementById('montoCarga').value,
             desc: document.getElementById('txtDescuento').innerText,
             total: document.getElementById('txtTotal').innerText,
-            time: new Date().toLocaleString()
+            time: new Date().toLocaleTimeString()
         });
-        localStorage.setItem('gnc_turno', JSON.stringify(history));
+        localStorage.setItem('gnc_turno_v3', JSON.stringify(history));
         
-        // Reset pantalla para el siguiente
+        // Limpiar para el siguiente
         document.getElementById('cuponValor').value = "";
         document.getElementById('montoCarga').value = "";
         document.getElementById('result-display').style.display = 'none';
         document.getElementById('step-monto').classList.add('step-disabled');
         updateHistoryUI();
-        alert("✅ Guardado en historial. Listo para el siguiente cliente.");
+        alert("✅ Cobro registrado.");
     }
 
     function updateHistoryUI() {
-        const history = JSON.parse(localStorage.getItem('gnc_turno') || '[]');
+        const history = JSON.parse(localStorage.getItem('gnc_turno_v3') || '[]');
         document.getElementById('list').innerHTML = history.map(item => `
             <div class="history-item">
-                <span>${item.time.split(',')[1]} - ${item.porc}</span>
-                <span><strong>$${item.total}</strong> (desc -$${item.desc})</span>
+                <span>${item.time} - <b>${item.porc}</b></span>
+                <span>Cobrado: <b>$${item.total}</b></span>
             </div>
         `).join('');
     }
 
     function exportarHistorial() {
-        const history = JSON.parse(localStorage.getItem('gnc_turno') || '[]');
-        if (history.length === 0) return alert("No hay datos");
-        let csv = "Fecha,Hora,Cupón,Carga,Descuento,Cobrado\n";
-        history.forEach(i => csv += `${i.time},${i.code},${i.porc},${i.carga},${i.desc},${i.total}\n`);
+        const history = JSON.parse(localStorage.getItem('gnc_turno_v3') || '[]');
+        if (history.length === 0) return alert("Sin datos");
+        let csv = "Hora,ID Cupon,Porcentaje,Carga Bruta,Descuento,Total Cobrado\n";
+        history.forEach(i => csv += `${i.time},${i.id},${i.porc},${i.carga},${i.desc},${i.total}\n`);
         const blob = new Blob([csv], { type: 'text/csv' });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `rendicion_${new Date().toLocaleDateString()}.csv`;
+        a.download = `rendicion_gnc.csv`;
         a.click();
     }
 
     function clearHistory() {
-        if(confirm('¿Borrar historial para nuevo turno?')) {
-            localStorage.removeItem('gnc_turno');
+        if(confirm('¿Reiniciar el turno?')) {
+            localStorage.removeItem('gnc_turno_v3');
             updateHistoryUI();
         }
     }
