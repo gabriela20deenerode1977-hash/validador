@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador GNC - Seguridad Activa</title>
+    <title>Validador GNC - Seguridad Permanente</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -20,28 +20,28 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        h2 { text-align: center; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-size: 1.1rem; }
+        h2 { text-align: center; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 10px; }
         
         #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #444; background: #000; margin-bottom: 15px; }
 
         .step-box { background: #252525; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
-        .label-step { color: var(--accent); font-weight: bold; font-size: 12px; display: block; margin-bottom: 10px; }
+        .label-step { color: var(--accent); font-weight: bold; font-size: 11px; display: block; margin-bottom: 10px; text-transform: uppercase; }
         
-        input { width: 100%; padding: 15px; background: #333; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; font-size: 22px; text-align: center; outline: none; }
+        input { width: 100%; padding: 15px; background: #333; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; font-size: 24px; text-align: center; outline: none; font-weight: bold; }
+        input:disabled { opacity: 0.2; }
 
         .result-display { background: var(--success); color: white; padding: 15px; border-radius: 10px; text-align: center; margin-top: 15px; display: none; }
         .result-display div { font-size: 32px; font-weight: 900; }
 
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; margin-top: 10px; }
+        .btn { width: 100%; padding: 18px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 15px; margin-top: 10px; }
         .btn-confirm { background: var(--success); color: white; }
-        .btn-export { background: #444; color: #ccc; margin-top: 20px; }
+        .btn-export { background: #444; color: #ccc; margin-top: 25px; font-size: 12px; }
 
         .totales-resumen { display: flex; gap: 10px; margin: 20px 0; }
         .total-box { flex: 1; background: #252525; padding: 10px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
         .total-val { display: block; font-size: 18px; font-weight: bold; color: #fff; }
-        .total-lbl { font-size: 9px; color: #888; text-transform: uppercase; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 11px; color: #aaa; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; color: #aaa; margin-top: 10px; }
         th { text-align: left; padding: 8px; border-bottom: 1px solid #333; color: var(--accent); }
         td { padding: 8px; border-bottom: 1px solid #222; }
 
@@ -51,22 +51,22 @@
 <body>
 
 <div class="container">
-    <h2>Validador de Cupones GNC</h2>
+    <h2>Validador GNC Seguridad</h2>
 
     <div id="step-1" class="step-box">
-        <span class="label-step">1. ESCANEAR CUPÓN</span>
+        <span class="label-step">1. ESCANEAR</span>
         <div id="reader"></div>
-        <p id="status-qr" style="text-align: center; font-size: 13px; color: #888;">Esperando QR...</p>
+        <p id="status-qr" style="text-align: center; font-size: 13px; color: #888;">[ ESCÁNER ACTIVO ]</p>
     </div>
 
     <div id="step-2" class="step-box">
-        <span class="label-step">2. MONTO DE CARGA ($)</span>
+        <span class="label-step">2. MONTO CARGA ($)</span>
         <input type="number" id="inputMonto" placeholder="0.00" disabled oninput="calcularDescuento()">
         
         <div id="displayCalculo" class="result-display">
             <small id="infoDescuento"></small>
             <div id="montoFinal">$ 0,00</div>
-            <small>MONTO FINAL A COBRAR</small>
+            <small>MONTO A COBRAR AL CLIENTE</small>
         </div>
 
         <button id="btnFinalizar" class="btn btn-confirm hidden" onclick="finalizarOperacion()">Confirmar Carga</button>
@@ -75,84 +75,88 @@
     <div class="totales-resumen">
         <div class="total-box">
             <span id="resumen-cantidad" class="total-val">0</span>
-            <span class="total-lbl">Canjes</span>
+            <span style="font-size: 9px;">CANJES TURNO</span>
         </div>
         <div class="total-box" style="border-color: var(--success);">
             <span id="resumen-ahorro" class="total-val">$ 0,00</span>
-            <span class="total-lbl">Total Descontado</span>
+            <span style="font-size: 9px;">AHORRO TOTAL</span>
         </div>
     </div>
 
     <table>
         <thead>
-            <tr>
-                <th>Hora</th>
-                <th>Carga</th>
-                <th>Desc.</th>
-                <th>Final</th>
-            </tr>
+            <tr><th>Hora</th><th>Carga</th><th>Ahorro</th><th>Final</th></tr>
         </thead>
         <tbody id="log-body"></tbody>
     </table>
 
     <div style="margin-top: 30px; background: #1a1a1a; padding: 15px; border-radius: 10px;">
-        <label style="font-size: 11px; color: var(--accent);">Nombre del Reporte:</label>
-        <input type="text" id="fileName" placeholder="Ej: Turno_Manana" style="font-size: 14px; padding: 10px; margin-bottom: 10px;">
-        <button class="btn btn-export" onclick="descargarYLimpiar()">📥 Descargar Excel y Limpiar</button>
+        <input type="text" id="fileName" placeholder="Nombre_Reporte" style="font-size: 14px; padding: 10px; margin-bottom: 10px;">
+        <button class="btn btn-export" onclick="descargarYLimpiar()">📥 Descargar y Vaciar Turno</button>
     </div>
 </div>
 
 <script>
     let cuponActivo = null;
     let scanner = new Html5Qrcode("reader");
-    let ultimoQr = "";
-    let ultimoTiempo = 0;
+    let ultimoIdLeido = "";
+    let ultimoTiempoLeido = 0;
 
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    function playBeep() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    const config = { fps: 15, qrbox: { width: 250, height: 250 } };
     scanner.start({ facingMode: "environment" }, config, onScanSuccess);
 
     function onScanSuccess(decodedText) {
         const ahora = Date.now();
-        if (decodedText === ultimoQr && (ahora - ultimoTiempo) < 5000) return;
-        ultimoQr = decodedText; ultimoTiempo = ahora;
-
-        // 1. EXTRAER PORCENTAJE
-        let porcentaje = 0;
-        if (decodedText.includes("20%")) porcentaje = 20;
-        else if (decodedText.includes("15%")) porcentaje = 15;
-        else if (decodedText.includes("10%")) porcentaje = 10;
-        else if (decodedText.includes("5%")) porcentaje = 5;
-        
-        if (porcentaje === 0) { alert("❌ Código no válido."); return; }
-
-        // 2. EXTRAER ID Y VERIFICAR SI YA SE USÓ EN ESTE TURNO
         let idCupon = decodedText.split('|')[0] || decodedText;
-        let db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         
-        let yaExiste = db.some(operacion => operacion.id === idCupon);
-        
-        if (yaExiste) {
-            alert("⚠️ ERROR: Este cupón ya fue utilizado en este turno.");
+        // Bloqueo rápido de cámara
+        if (idCupon === ultimoIdLeido && (ahora - ultimoTiempoLeido) < 3000) return;
+        ultimoIdLeido = idCupon; ultimoTiempoLeido = ahora;
+
+        // 1. VERIFICACIÓN DE SEGURIDAD PERMANENTE (CUPONES QUEMADOS)
+        let quemados = JSON.parse(localStorage.getItem('gnc_cupones_quemados') || '[]');
+        if (quemados.includes(idCupon)) {
+            alert("❌ ERROR: Este cupón ya fue utilizado anteriormente y no es válido.");
             return;
         }
 
-        // 3. SI ESTÁ OK, ACTIVAR PASO 2
-        cuponActivo = { id: idCupon, porc: porcentaje };
-        document.getElementById('status-qr').innerText = "✅ VALIDADO " + porcentaje + "%";
+        // 2. EXTRAER PORCENTAJE
+        let porc = 0;
+        if (decodedText.includes("20%")) porc = 20;
+        else if (decodedText.includes("15%")) porc = 15;
+        else if (decodedText.includes("10%")) porc = 10;
+        else if (decodedText.includes("5%")) porc = 5;
+
+        if (porc === 0) return;
+
+        // 3. TODO OK
+        playBeep();
+        cuponActivo = { id: idCupon, porc: porc };
+        document.getElementById('status-qr').innerText = "✅ CUPÓN VÁLIDO: " + porc + "%";
         document.getElementById('status-qr').style.color = "var(--success)";
         document.getElementById('inputMonto').disabled = false;
         document.getElementById('inputMonto').focus();
     }
 
     function calcularDescuento() {
-        const monto = parseFloat(document.getElementById('inputMonto').value);
-        if (isNaN(monto) || monto <= 0) {
+        const m = parseFloat(document.getElementById('inputMonto').value);
+        if (isNaN(m) || m <= 0) {
             document.getElementById('displayCalculo').style.display = 'none';
             document.getElementById('btnFinalizar').classList.add('hidden');
             return;
         }
-        const ahorro = (monto * cuponActivo.porc) / 100;
-        const total = monto - ahorro;
+        const ahorro = (m * cuponActivo.porc) / 100;
+        const total = m - ahorro;
 
         document.getElementById('infoDescuento').innerText = `DESCUENTO ${cuponActivo.porc}% (-$${ahorro.toFixed(2)})`;
         document.getElementById('montoFinal').innerText = `$ ${total.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
@@ -163,79 +167,81 @@
     function finalizarOperacion() {
         if (!cuponActivo) return;
 
-        const montoOrig = parseFloat(document.getElementById('inputMonto').value);
-        const ahorro = (montoOrig * cuponActivo.porc) / 100;
-        const total = montoOrig - ahorro;
+        const monto = parseFloat(document.getElementById('inputMonto').value);
+        const ahorro = (monto * cuponActivo.porc) / 100;
+        const total = monto - ahorro;
         const ahora = new Date();
-        const horaString = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
+        const horaStr = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
 
-        const operacion = {
-            hora: horaString,
-            original: montoOrig,
-            descuentoPorc: cuponActivo.porc,
+        const data = {
+            id: cuponActivo.id,
+            hora: horaStr,
+            orig: monto,
+            porc: cuponActivo.porc,
             ahorro: ahorro,
-            final: total,
-            id: cuponActivo.id
+            final: total
         };
 
-        // GUARDAR EN BASE DE DATOS LOCAL
+        // GUARDAR EN EL TURNO
         let db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
-        db.push(operacion);
+        db.push(data);
         localStorage.setItem('gnc_validaciones', JSON.stringify(db));
 
-        // RESETEAR INTERFAZ
-        alert("Carga Confirmada con éxito.");
+        // REGISTRAR EN LISTA NEGRA PERMANENTE
+        let quemados = JSON.parse(localStorage.getItem('gnc_cupones_quemados') || '[]');
+        quemados.push(cuponActivo.id);
+        localStorage.setItem('gnc_cupones_quemados', JSON.stringify(quemados));
+
+        alert("✅ OPERACIÓN REGISTRADA Y CUPÓN INHABILITADO.");
+        
+        // RESET
         cuponActivo = null;
         document.getElementById('inputMonto').value = "";
         document.getElementById('inputMonto').disabled = true;
         document.getElementById('displayCalculo').style.display = 'none';
         document.getElementById('btnFinalizar').classList.add('hidden');
-        document.getElementById('status-qr').innerText = "Esperando QR...";
+        document.getElementById('status-qr').innerText = "[ ESCÁNER ACTIVO ]";
         document.getElementById('status-qr').style.color = "#888";
-        
         renderTable();
     }
 
     function renderTable() {
-        const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        const db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         const cuerpo = document.getElementById('log-body');
-        let ahorroAcumulado = 0;
+        let suma = 0;
 
-        cuerpo.innerHTML = [...datos].reverse().map(d => {
-            ahorroAcumulado += d.ahorro;
-            return `
-                <tr>
-                    <td>${d.hora}</td>
-                    <td>$${d.original.toFixed(2)}</td>
-                    <td style="color:var(--accent)">-$${d.ahorro.toFixed(2)}</td>
-                    <td style="color:var(--success); font-weight:bold;">$${d.final.toFixed(2)}</td>
-                </tr>
-            `;
+        cuerpo.innerHTML = [...db].reverse().map(d => {
+            suma += d.ahorro;
+            return `<tr>
+                <td>${d.hora}</td>
+                <td>$${d.orig.toFixed(2)}</td>
+                <td style="color:var(--accent)">-$${d.ahorro.toFixed(2)}</td>
+                <td style="color:var(--success); font-weight:bold;">$${d.final.toFixed(2)}</td>
+            </tr>`;
         }).join('');
 
-        document.getElementById('resumen-cantidad').innerText = datos.length;
-        document.getElementById('resumen-ahorro').innerText = `$ ${ahorroAcumulado.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+        document.getElementById('resumen-cantidad').innerText = db.length;
+        document.getElementById('resumen-ahorro').innerText = `$ ${suma.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
     }
 
     function descargarYLimpiar() {
-        const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
-        if (datos.length === 0) return alert("No hay datos.");
+        const db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        if (db.length === 0) return alert("No hay datos.");
 
-        let nombre = document.getElementById('fileName').value.trim() || "Reporte_GNC";
-        let csv = "Hora,Monto_Original,Descuento_Pesos,Monto_Final_Cobrado,ID_Cupon\n";
-        
-        datos.forEach(d => {
-            csv += `${d.hora},"$${d.original.toFixed(2)}","-$${d.ahorro.toFixed(2)}","$${d.final.toFixed(2)}",${d.id}\n`;
+        let nom = document.getElementById('fileName').value.trim() || "Reporte_Turno";
+        let csv = "Hora,Monto_Surtidor,Ahorro_Pesos,Total_Cobrado,ID_Cupon\n";
+        db.forEach(d => {
+            csv += `${d.hora},"$${d.orig.toFixed(2)}","-$${d.ahorro.toFixed(2)}","$${d.final.toFixed(2)}",${d.id}\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `${nombre}.csv`;
+        link.download = `${nom}.csv`;
         link.click();
 
         setTimeout(() => {
-            if (confirm("¿Excel descargado? Se vaciará el historial.")) {
+            if (confirm("¿Excel descargado? Se vaciará la tabla del turno, pero los cupones usados seguirán invalidados.")) {
                 localStorage.removeItem('gnc_validaciones');
                 location.reload();
             }
