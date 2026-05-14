@@ -3,222 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador Oficial GNC</title>
+    <title>Validador GNC - Turno Actual</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root {
-            --bg: #1a1a1a;
-            --card: #2d2d2d;
-            --text: #ffffff;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #e0e0e0;
             --accent: #f1c40f;
             --success: #27ae60;
         }
 
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: var(--bg); 
-            color: var(--text); 
-            margin: 0; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-
-        h2 { text-align: center; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
-
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid var(--accent) !important; }
-
-        .stats-grid { display: flex; gap: 10px; margin: 20px 0; }
-        .stat-box { flex: 1; background: #3d3d3d; padding: 10px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
-        .stat-val { display: block; font-size: 20px; font-weight: bold; }
-        .stat-lbl { font-size: 10px; color: #bbb; text-transform: uppercase; }
-
-        .history-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-        .history-table th { background: #3d3d3d; color: var(--accent); padding: 10px; text-align: left; }
-        .history-table td { padding: 10px; border-bottom: 1px solid #3d3d3d; }
-
-        .download-zone { 
-            margin-top: 30px; 
-            padding: 15px; 
-            background: #252525; 
-            border-radius: 10px; 
-            border: 1px dashed var(--accent);
-        }
         
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--accent); }
-        .input-group input { 
-            width: 100%; 
-            padding: 10px; 
-            background: #333; 
-            border: 1px solid #444; 
-            color: white; 
-            border-radius: 5px; 
-            box-sizing: border-box;
-        }
+        h2 { text-align: center; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-size: 1.1rem; }
+        
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #444; background: #000; margin-bottom: 15px; }
 
-        .btn { 
-            width: 100%; 
-            padding: 15px; 
-            border: none; 
-            border-radius: 8px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            text-transform: uppercase;
-            transition: 0.3s;
-        }
-        .btn-download { background: var(--success); color: white; margin-bottom: 10px; }
-        .btn-download:hover { background: #219150; }
+        .step-box { background: #252525; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
+        .label-step { color: var(--accent); font-weight: bold; font-size: 12px; display: block; margin-bottom: 10px; }
+        
+        input { width: 100%; padding: 15px; background: #333; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; font-size: 22px; text-align: center; outline: none; }
+
+        .result-display { background: var(--success); color: white; padding: 15px; border-radius: 10px; text-align: center; margin-top: 15px; display: none; }
+        .result-display div { font-size: 32px; font-weight: 900; }
+
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; margin-top: 10px; }
+        .btn-confirm { background: var(--success); color: white; }
+        .btn-export { background: #444; color: #ccc; margin-top: 20px; }
+
+        /* Estilo Tabla e Historial */
+        .totales-resumen { display: flex; gap: 10px; margin: 20px 0; }
+        .total-box { flex: 1; background: #252525; padding: 10px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
+        .total-val { display: block; font-size: 18px; font-weight: bold; color: #fff; }
+        .total-lbl { font-size: 9px; color: #888; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 11px; color: #aaa; }
+        th { text-align: left; padding: 8px; border-bottom: 1px solid #333; color: var(--accent); }
+        td { padding: 8px; border-bottom: 1px solid #222; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Validador GNC</h2>
+    <h2>Validador de Cupones GNC</h2>
 
-    <div id="reader"></div>
+    <div id="step-1" class="step-box">
+        <span class="label-step">1. ESCANEAR CUPÓN</span>
+        <div id="reader"></div>
+        <p id="status-qr" style="text-align: center; font-size: 13px; color: #888;">Esperando QR...</p>
+    </div>
 
-    <div class="stats-grid">
-        <div class="stat-box">
-            <span id="count-total" class="stat-val">0</span>
-            <span class="stat-lbl">Cupones</span>
+    <div id="step-2" class="step-box">
+        <span class="label-step">2. MONTO DE CARGA ($)</span>
+        <input type="number" id="inputMonto" placeholder="0.00" disabled oninput="calcularDescuento()">
+        
+        <div id="displayCalculo" class="result-display">
+            <small id="infoDescuento"></small>
+            <div id="montoFinal">$ 0,00</div>
+            <small>MONTO FINAL A COBRAR</small>
         </div>
-        <div class="stat-box">
-            <span id="last-time" class="stat-val">--:--</span>
-            <span class="stat-lbl">Última Hora</span>
+
+        <button id="btnFinalizar" class="btn btn-confirm hidden" onclick="finalizarOperacion()">Confirmar Carga</button>
+    </div>
+
+    <div class="totales-resumen">
+        <div class="total-box">
+            <span id="resumen-cantidad" class="total-val">0</span>
+            <span class="total-lbl">Canjes</span>
+        </div>
+        <div class="total-box" style="border-color: var(--success);">
+            <span id="resumen-ahorro" class="total-val">$ 0,00</span>
+            <span class="total-lbl">Total Descontado</span>
         </div>
     </div>
 
-    <table class="history-table">
+    <table>
         <thead>
             <tr>
                 <th>Hora</th>
-                <th>Datos QR</th>
-                <th>Estado</th>
+                <th>Carga</th>
+                <th>Desc.</th>
+                <th>Final</th>
             </tr>
         </thead>
         <tbody id="log-body"></tbody>
     </table>
 
-    <div class="download-zone">
-        <div class="input-group">
-            <label>Nombre del Archivo Personalizado:</label>
-            <input type="text" id="fileNameInput" placeholder="Ej: Lunes_Turno_Mañana">
-        </div>
-        
-        <button onclick="descargarYLimpiar()" class="btn btn-download">
-            📥 Descargar Reporte y Limpiar
-        </button>
+    <div style="margin-top: 30px; background: #1a1a1a; padding: 15px; border-radius: 10px;">
+        <label style="font-size: 11px; color: var(--accent);">Nombre del Reporte:</label>
+        <input type="text" id="fileName" placeholder="Ej: Turno_Manana" style="font-size: 14px; padding: 10px; margin-bottom: 10px;">
+        <button class="btn btn-export" onclick="descargarYLimpiar()">📥 Descargar Excel y Limpiar</button>
     </div>
 </div>
 
 <script>
-    // --- NUEVA LÓGICA ANTI-DUPLICADOS ---
-    let lastScannedCode = "";
-    let lastScannedTime = 0;
+    let cuponActivo = null;
+    let scanner = new Html5Qrcode("reader");
+    let ultimoQr = "";
+    let ultimoTiempo = 0;
 
-    const html5QrCode = new Html5Qrcode("reader");
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-    html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+    scanner.start({ facingMode: "environment" }, config, onScanSuccess);
 
     function onScanSuccess(decodedText) {
-        const ahoraTimestamp = Date.now();
-        
-        // BLOQUEO: Si es el mismo código y pasaron menos de 8 segundos, ignorar
-        if (decodedText === lastScannedCode && (ahoraTimestamp - lastScannedTime) < 8000) {
-            return; 
-        }
+        const ahora = Date.now();
+        if (decodedText === ultimoQr && (ahora - ultimoTiempo) < 5000) return;
+        ultimoQr = decodedText; ultimoTiempo = ahora;
 
-        // Si llegamos acá, es un escaneo nuevo o pasó el tiempo de espera
-        lastScannedCode = decodedText;
-        lastScannedTime = ahoraTimestamp;
-
-        const ahora = new Date();
-        const horaString = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
+        let porcentaje = 0;
+        if (decodedText.includes("20%")) porcentaje = 20;
+        else if (decodedText.includes("15%")) porcentaje = 15;
+        else if (decodedText.includes("10%")) porcentaje = 10;
+        else if (decodedText.includes("5%")) porcentaje = 5;
         
-        const nuevaValidacion = {
-            hora: horaString,
-            datos: decodedText, // Aquí va la patente e ID que vienen del QR
-            id_unico: decodedText.split('|')[0] || Math.random()
-        };
+        if (porcentaje === 0) { alert("❌ Código no válido."); return; }
 
-        guardarValidacion(nuevaValidacion);
-        
-        // Feedback visual simple para el playero
-        alert("Cupón Escaneado: " + decodedText);
+        cuponActivo = { id: decodedText.split('|')[0] || "ID", porc: porcentaje };
+        document.getElementById('status-qr').innerText = "✅ VALIDADO " + porcentaje + "%";
+        document.getElementById('inputMonto').disabled = false;
+        document.getElementById('inputMonto').focus();
     }
 
-    function guardarValidacion(item) {
-        let historial = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
-        historial.push(item);
-        localStorage.setItem('gnc_validaciones', JSON.stringify(historial));
+    function calcularDescuento() {
+        const monto = parseFloat(document.getElementById('inputMonto').value);
+        if (isNaN(monto) || monto <= 0) {
+            document.getElementById('displayCalculo').style.display = 'none';
+            document.getElementById('btnFinalizar').classList.add('hidden');
+            return;
+        }
+        const ahorro = (monto * cuponActivo.porc) / 100;
+        const total = monto - ahorro;
+
+        document.getElementById('infoDescuento').innerText = `DESCUENTO ${cuponActivo.porc}% (-$${ahorro.toFixed(2)})`;
+        document.getElementById('montoFinal').innerText = `$ ${total.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+        document.getElementById('displayCalculo').style.display = 'block';
+        document.getElementById('btnFinalizar').classList.remove('hidden');
+    }
+
+    function finalizarOperacion() {
+        const montoOrig = parseFloat(document.getElementById('inputMonto').value);
+        const ahorro = (montoOrig * cuponActivo.porc) / 100;
+        const total = montoOrig - ahorro;
+        const ahora = new Date();
+        const horaString = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
+
+        const operacion = {
+            hora: horaString,
+            original: montoOrig,
+            descuento: cucupoActivo.porc,
+            ahorro: ahorro,
+            final: total,
+            id: cuponActivo.id
+        };
+
+        let db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        db.push(operacion);
+        localStorage.setItem('gnc_validaciones', JSON.stringify(db));
+
+        // Reset
+        document.getElementById('inputMonto').value = "";
+        document.getElementById('inputMonto').disabled = true;
+        document.getElementById('displayCalculo').style.display = 'none';
+        document.getElementById('btnFinalizar').classList.add('hidden');
+        document.getElementById('status-qr').innerText = "Esperando QR...";
         renderTable();
     }
 
     function renderTable() {
         const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         const cuerpo = document.getElementById('log-body');
-        document.getElementById('count-total').innerText = datos.length;
-        
-        if(datos.length > 0) {
-            document.getElementById('last-time').innerText = datos[datos.length - 1].hora;
-        }
+        let ahorroAcumulado = 0;
 
-        const datosVisibles = [...datos].reverse().slice(0, 5);
-        cuerpo.innerHTML = datosVisibles.map(d => `
-            <tr>
-                <td>${d.hora}</td>
-                <td style="color:var(--accent); font-size: 10px;">${d.datos}</td>
-                <td style="color:var(--success)">✅ OK</td>
-            </tr>
-        `).join('');
+        cuerpo.innerHTML = [...datos].reverse().map(d => {
+            ahorroAcumulado += d.ahorro;
+            return `
+                <tr>
+                    <td>${d.hora}</td>
+                    <td>$${d.original.toFixed(2)}</td>
+                    <td style="color:var(--accent)">-$${d.ahorro.toFixed(2)}</td>
+                    <td style="color:var(--success); font-weight:bold;">$${d.final.toFixed(2)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('resumen-cantidad').innerText = datos.length;
+        document.getElementById('resumen-ahorro').innerText = `$ ${ahorroAcumulado.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
     }
 
     function descargarYLimpiar() {
         const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        if (datos.length === 0) return alert("No hay datos.");
+
+        let nombre = document.getElementById('fileName').value.trim() || "Reporte_GNC";
+        let csv = "Hora,Monto_Original,Descuento_Pesos,Monto_Final_Cobrado\n";
         
-        if (datos.length === 0) {
-            alert("No hay datos para descargar.");
-            return;
-        }
-
-        let nombreManual = document.getElementById('fileNameInput').value.trim();
-        if (!nombreManual) {
-            const f = new Date();
-            nombreManual = `Reporte_GNC_${f.getDate()}-${f.getMonth()+1}`;
-        }
-
-        let csv = "Hora,Datos_QR\n";
         datos.forEach(d => {
-            csv += `${d.hora},"${d.datos}"\n`;
+            // Formato moneda para Excel
+            csv += `${d.hora},"$${d.original.toFixed(2)}","-$${d.ahorro.toFixed(2)}","$${d.final.toFixed(2)}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `${nombreManual}.csv`);
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = `${nombre}.csv`;
         link.click();
-        document.body.removeChild(link);
 
         setTimeout(() => {
-            if (confirm("¿Descarga completada? Se borrará el historial.")) {
+            if (confirm("¿Descarga OK? Se vaciará el historial.")) {
                 localStorage.removeItem('gnc_validaciones');
-                document.getElementById('fileNameInput').value = "";
-                renderTable();
+                location.reload();
             }
         }, 1000);
     }
 
     window.onload = renderTable;
 </script>
-
 </body>
 </html>
