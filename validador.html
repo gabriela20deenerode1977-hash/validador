@@ -3,53 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner GNC</title>
+    <title>Validador Oficial GNC</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
-        #reader { width: 100%; max-width: 400px; margin: 20px auto; background: #000; border-radius: 10px; }
-        .btn { padding: 15px 30px; background: #f1c40f; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        #resultado { display: none; background: #2d2d2d; padding: 20px; border-radius: 15px; margin-top: 20px; }
-        input { width: 80%; padding: 10px; margin: 10px 0; font-size: 18px; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #0056b3; }
+        h2 { color: #0056b3; margin-top: 0; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
+        .result-card { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; font-weight: bold; font-size: 1.2em; }
+        .success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+        
+        /* Historial */
+        .history { margin-top: 30px; text-align: left; }
+        .history h3 { font-size: 1em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        #list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+        .history-item { background: #fff; padding: 8px; border-bottom: 1px solid #eee; font-size: 0.9em; display: flex; justify-content: space-between; }
+        
+        button { background: #0056b3; color: white; border: none; padding: 15px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px 5px; width: 80%; }
+        button:active { transform: scale(0.98); }
+        .btn-clear { background: #dc3545; font-size: 11px; padding: 4px 8px; width: auto; }
+        .torch-btn { background: #ffc107; color: #000; width: auto; padding: 10px; }
     </style>
 </head>
 <body>
-    <h2>Validador de Cupones</h2>
-    <div id="reader"></div>
-    <button id="btn-start" class="btn" onclick="iniciar()">📷 ACTIVAR CÁMARA</button>
 
-    <div id="resultado">
-        <h3 style="color: #2ecc71;">CUPÓN LEÍDO</h3>
-        <p id="info-cupon"></p>
-        <label>Monto Carga ($):</label><br>
-        <input type="number" id="monto" oninput="calcular()">
-        <h2 id="total-pagar">Total: $0</h2>
-        <button class="btn" style="background:#2ecc71" onclick="location.reload()">NUEVA VENTA</button>
+<div class="container">
+    <h2>⛽ Validador GNC</h2>
+    <div id="reader"></div>
+    
+    <div id="result" class="result-card"></div>
+
+    <div class="controls">
+        <button onclick="startScanner()">🚀 Encender Cámara</button>
+        <button id="torch-button" class="torch-btn" style="display:none;" onclick="toggleTorch()">🔦 Linterna</button>
     </div>
 
-    <script>
-        let porcentaje = 0;
-        function iniciar() {
-            document.getElementById('btn-start').style.display = 'none';
-            const scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-            (text) => {
-                scanner.stop();
-                document.getElementById('reader').style.display = 'none';
-                document.getElementById('resultado').style.display = 'block';
-                
-                // Extraer datos simple
-                const data = text.split('|');
-                document.getElementById('info-cupon').innerText = text.replace(/\|/g, ' - ');
-                porcentaje = parseInt(text.split('PREMIO:')[1]) || 0;
-            });
-        }
+    <div class="history">
+        <h3>Últimos Escaneos <button class="btn-clear" onclick="clearHistory()">Borrar Historial</button></h3>
+        <div id="list"></div>
+    </div>
+</div>
 
-        function calcular() {
-            const m = document.getElementById('monto').value || 0;
-            const final = m - (m * porcentaje / 100);
-            document.getElementById('total-pagar').innerText = "Total a Cobrar: $" + final.toFixed(2);
+<audio id="beep" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+
+<script>
+    let html5QrCode;
+    let isTorchOn = false;
+
+    // Cargar historial al iniciar
+    window.onload = updateHistoryUI;
+
+    function startScanner() {
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            onScanSuccess
+        ).then(() => {
+            const track = html5QrCode.getRunningTrack();
+            if (track.getCapabilities().torch) {
+                document.getElementById('torch-button').style.display = 'inline-block';
+            }
+        }).catch(err => {
+            alert("Error al abrir cámara: " + err);
+        });
+    }
+
+    function onScanSuccess(decodedText) {
+        // Sonido de Bip
+        document.getElementById('beep').play();
+
+        // Mostrar resultado visual
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'result-card success';
+        resultDiv.innerHTML = `✅ CÓDIGO LEÍDO:<br>${decodedText}`;
+
+        // Guardar en historial
+        saveToHistory(decodedText);
+
+        // Pausa breve para que no lea el mismo código mil veces
+        html5QrCode.pause();
+        setTimeout(() => { html5QrCode.resume(); }, 2500);
+    }
+
+    function toggleTorch() {
+        isTorchOn = !isTorchOn;
+        html5QrCode.applyVideoConstraints({
+            advanced: [{ torch: isTorchOn }]
+        });
+    }
+
+    function saveToHistory(text) {
+        let history = JSON.parse(localStorage.getItem('gnc_history') || '[]');
+        const newItem = {
+            text: text,
+            time: new Date().toLocaleTimeString()
+        };
+        history.unshift(newItem); 
+        localStorage.setItem('gnc_history', JSON.stringify(history.slice(0, 15)));
+        updateHistoryUI();
+    }
+
+    function updateHistoryUI() {
+        const history = JSON.parse(localStorage.getItem('gnc_history') || '[]');
+        const listDiv = document.getElementById('list');
+        listDiv.innerHTML = history.map(item => `
+            <div class="history-item">
+                <span>${item.text}</span>
+                <span style="color: #999;">${item.time}</span>
+            </div>
+        `).join('');
+    }
+
+    function clearHistory() {
+        if(confirm('¿Borrar el historial de hoy?')) {
+            localStorage.removeItem('gnc_history');
+            updateHistoryUI();
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
