@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador GNC - Turno Actual</title>
+    <title>Validador GNC - Seguridad Activa</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -14,6 +14,7 @@
             --text: #e0e0e0;
             --accent: #f1c40f;
             --success: #27ae60;
+            --danger: #e74c3c;
         }
 
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
@@ -35,7 +36,6 @@
         .btn-confirm { background: var(--success); color: white; }
         .btn-export { background: #444; color: #ccc; margin-top: 20px; }
 
-        /* Estilo Tabla e Historial */
         .totales-resumen { display: flex; gap: 10px; margin: 20px 0; }
         .total-box { flex: 1; background: #252525; padding: 10px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
         .total-val { display: block; font-size: 18px; font-weight: bold; color: #fff; }
@@ -116,6 +116,7 @@
         if (decodedText === ultimoQr && (ahora - ultimoTiempo) < 5000) return;
         ultimoQr = decodedText; ultimoTiempo = ahora;
 
+        // 1. EXTRAER PORCENTAJE
         let porcentaje = 0;
         if (decodedText.includes("20%")) porcentaje = 20;
         else if (decodedText.includes("15%")) porcentaje = 15;
@@ -124,8 +125,21 @@
         
         if (porcentaje === 0) { alert("❌ Código no válido."); return; }
 
-        cuponActivo = { id: decodedText.split('|')[0] || "ID", porc: porcentaje };
+        // 2. EXTRAER ID Y VERIFICAR SI YA SE USÓ EN ESTE TURNO
+        let idCupon = decodedText.split('|')[0] || decodedText;
+        let db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        
+        let yaExiste = db.some(operacion => operacion.id === idCupon);
+        
+        if (yaExiste) {
+            alert("⚠️ ERROR: Este cupón ya fue utilizado en este turno.");
+            return;
+        }
+
+        // 3. SI ESTÁ OK, ACTIVAR PASO 2
+        cuponActivo = { id: idCupon, porc: porcentaje };
         document.getElementById('status-qr').innerText = "✅ VALIDADO " + porcentaje + "%";
+        document.getElementById('status-qr').style.color = "var(--success)";
         document.getElementById('inputMonto').disabled = false;
         document.getElementById('inputMonto').focus();
     }
@@ -147,6 +161,8 @@
     }
 
     function finalizarOperacion() {
+        if (!cuponActivo) return;
+
         const montoOrig = parseFloat(document.getElementById('inputMonto').value);
         const ahorro = (montoOrig * cuponActivo.porc) / 100;
         const total = montoOrig - ahorro;
@@ -156,22 +172,27 @@
         const operacion = {
             hora: horaString,
             original: montoOrig,
-            descuento: cucupoActivo.porc,
+            descuentoPorc: cuponActivo.porc,
             ahorro: ahorro,
             final: total,
             id: cuponActivo.id
         };
 
+        // GUARDAR EN BASE DE DATOS LOCAL
         let db = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         db.push(operacion);
         localStorage.setItem('gnc_validaciones', JSON.stringify(db));
 
-        // Reset
+        // RESETEAR INTERFAZ
+        alert("Carga Confirmada con éxito.");
+        cuponActivo = null;
         document.getElementById('inputMonto').value = "";
         document.getElementById('inputMonto').disabled = true;
         document.getElementById('displayCalculo').style.display = 'none';
         document.getElementById('btnFinalizar').classList.add('hidden');
         document.getElementById('status-qr').innerText = "Esperando QR...";
+        document.getElementById('status-qr').style.color = "#888";
+        
         renderTable();
     }
 
@@ -201,11 +222,10 @@
         if (datos.length === 0) return alert("No hay datos.");
 
         let nombre = document.getElementById('fileName').value.trim() || "Reporte_GNC";
-        let csv = "Hora,Monto_Original,Descuento_Pesos,Monto_Final_Cobrado\n";
+        let csv = "Hora,Monto_Original,Descuento_Pesos,Monto_Final_Cobrado,ID_Cupon\n";
         
         datos.forEach(d => {
-            // Formato moneda para Excel
-            csv += `${d.hora},"$${d.original.toFixed(2)}","-$${d.ahorro.toFixed(2)}","$${d.final.toFixed(2)}"\n`;
+            csv += `${d.hora},"$${d.original.toFixed(2)}","-$${d.ahorro.toFixed(2)}","$${d.final.toFixed(2)}",${d.id}\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -215,7 +235,7 @@
         link.click();
 
         setTimeout(() => {
-            if (confirm("¿Descarga OK? Se vaciará el historial.")) {
+            if (confirm("¿Excel descargado? Se vaciará el historial.")) {
                 localStorage.removeItem('gnc_validaciones');
                 location.reload();
             }
