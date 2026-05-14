@@ -42,7 +42,6 @@
         .history-table th { background: #3d3d3d; color: var(--accent); padding: 10px; text-align: left; }
         .history-table td { padding: 10px; border-bottom: 1px solid #3d3d3d; }
 
-        /* SECCIÓN DE DESCARGA (LO QUE PEDISTE) */
         .download-zone { 
             margin-top: 30px; 
             padding: 15px; 
@@ -99,8 +98,8 @@
         <thead>
             <tr>
                 <th>Hora</th>
-                <th>Patente</th>
-                <th>Premio</th>
+                <th>Datos QR</th>
+                <th>Estado</th>
             </tr>
         </thead>
         <tbody id="log-body"></tbody>
@@ -119,28 +118,40 @@
 </div>
 
 <script>
-    // Inicialización del Lector QR
+    // --- NUEVA LÓGICA ANTI-DUPLICADOS ---
+    let lastScannedCode = "";
+    let lastScannedTime = 0;
+
     const html5QrCode = new Html5Qrcode("reader");
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
 
     function onScanSuccess(decodedText) {
-        // Formato esperado: ID:GNC-XXXX|VAL:10% (Ejemplo)
-        // Aquí podrías agregar un sonido de "bip"
+        const ahoraTimestamp = Date.now();
+        
+        // BLOQUEO: Si es el mismo código y pasaron menos de 8 segundos, ignorar
+        if (decodedText === lastScannedCode && (ahoraTimestamp - lastScannedTime) < 8000) {
+            return; 
+        }
+
+        // Si llegamos acá, es un escaneo nuevo o pasó el tiempo de espera
+        lastScannedCode = decodedText;
+        lastScannedTime = ahoraTimestamp;
+
         const ahora = new Date();
         const horaString = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
         
-        // Simulación de captura (aquí deberías parsear el QR si viene con datos específicos)
-        // Para este ejemplo, creamos un registro cada vez que escanea algo:
         const nuevaValidacion = {
             hora: horaString,
-            patente: "ESCANEADO", // Aquí podrías extraer la patente del QR si lo incluyes
-            premio: decodedText.split('|')[1]?.replace('VAL:', '') || "DESC",
-            id: decodedText.split('|')[0] || "ID-NEW"
+            datos: decodedText, // Aquí va la patente e ID que vienen del QR
+            id_unico: decodedText.split('|')[0] || Math.random()
         };
 
         guardarValidacion(nuevaValidacion);
+        
+        // Feedback visual simple para el playero
+        alert("Cupón Escaneado: " + decodedText);
     }
 
     function guardarValidacion(item) {
@@ -159,16 +170,16 @@
             document.getElementById('last-time').innerText = datos[datos.length - 1].hora;
         }
 
-        cuerpo.innerHTML = datos.reverse().slice(0, 5).map(d => `
+        const datosVisibles = [...datos].reverse().slice(0, 5);
+        cuerpo.innerHTML = datosVisibles.map(d => `
             <tr>
                 <td>${d.hora}</td>
-                <td style="color:var(--accent)">${d.patente}</td>
-                <td>${d.premio}</td>
+                <td style="color:var(--accent); font-size: 10px;">${d.datos}</td>
+                <td style="color:var(--success)">✅ OK</td>
             </tr>
         `).join('');
     }
 
-    // --- FUNCIÓN DE DESCARGA Y LIMPIEZA (LO QUE PEDISTE) ---
     function descargarYLimpiar() {
         const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         
@@ -177,32 +188,28 @@
             return;
         }
 
-        // 1. Obtener nombre del archivo
         let nombreManual = document.getElementById('fileNameInput').value.trim();
         if (!nombreManual) {
             const f = new Date();
             nombreManual = `Reporte_GNC_${f.getDate()}-${f.getMonth()+1}`;
         }
 
-        // 2. Crear CSV
-        let csv = "Hora,Patente,Premio,ID\n";
+        let csv = "Hora,Datos_QR\n";
         datos.forEach(d => {
-            csv += `${d.hora},${d.patente},${d.premio},${d.id}\n`;
+            csv += `${d.hora},"${d.datos}"\n`;
         });
 
-        // 3. Descargar
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute("download", `${nombreManual}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        // 4. Limpiar historial tras confirmación
         setTimeout(() => {
-            if (confirm("¿Descarga completada? El historial se borrará para el siguiente turno.")) {
+            if (confirm("¿Descarga completada? Se borrará el historial.")) {
                 localStorage.removeItem('gnc_validaciones');
                 document.getElementById('fileNameInput').value = "";
                 renderTable();
@@ -210,7 +217,6 @@
         }, 1000);
     }
 
-    // Carga inicial
     window.onload = renderTable;
 </script>
 
