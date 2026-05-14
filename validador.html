@@ -11,12 +11,13 @@ body {
   color:white;
   text-align:center;
   font-family:Arial;
+  transition:0.3s;
 }
 
 video {
   width:90%;
   max-width:400px;
-  border-radius:10px;
+  border-radius:12px;
   margin-top:20px;
   border:3px solid #0f0;
 }
@@ -28,50 +29,69 @@ video {
 }
 
 .ok { color:#00ff00; }
-.error { color:red; }
+.error { color:#ff4444; }
 
 button {
   margin-top:10px;
-  padding:10px 20px;
+  padding:12px 20px;
   border:none;
-  border-radius:8px;
-  background:#ffcc00;
+  border-radius:10px;
+  background:#ffd600;
+  font-size:16px;
+  cursor:pointer;
+}
+
+input {
+  margin-top:15px;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  width:80%;
+  max-width:300px;
+  text-align:center;
+  font-size:16px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📷 Escanear QR</h2>
+<h2>📷 Escanear o ingresar código</h2>
 
 <video id="video" playsinline></video>
 
 <br>
 <button onclick="cambiarCamara()">🔄 Cambiar cámara</button>
 
-<div id="resultado">Apuntá al QR</div>
+<br>
 
-<!-- LIBRERÍA QR (MEJOR) -->
+<input id="codigoManual" placeholder="Ingresar código">
+<br>
+<button onclick="validarManual()">VALIDAR CÓDIGO</button>
+
+<div id="resultado">Inicializando cámara...</div>
+
 <script src="https://cdn.jsdelivr.net/npm/qr-scanner/qr-scanner.umd.min.js"></script>
 
 <script>
+const URL = "https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec";
+
 const video = document.getElementById("video");
 const resultado = document.getElementById("resultado");
 
-let currentCamera = "environment";
 let scanner;
+let currentCamera = "environment";
 
-function iniciarScanner() {
+// INICIAR SCANNER SEGURO
+function iniciarScanner(){
 
-  if (scanner) {
+  if(scanner){
     scanner.stop();
   }
 
   scanner = new QrScanner(
     video,
-    result => {
-      validarQR(result.data);
-    },
+    result => procesarValidacion(result.data),
     {
       preferredCamera: currentCamera,
       highlightScanRegion: true,
@@ -79,52 +99,90 @@ function iniciarScanner() {
     }
   );
 
-  scanner.start();
+  // 🔥 CONTROL DE CÁMARA
+  QrScanner.hasCamera().then(hasCamera => {
+
+    if(!hasCamera){
+      resultado.innerText = "❌ No se detecta cámara";
+      return;
+    }
+
+    scanner.start().then(() => {
+      resultado.innerText = "Apuntá al QR";
+    }).catch(err => {
+      resultado.innerText = "❌ Permiso de cámara denegado";
+      console.log(err);
+    });
+
+  });
 }
 
-function cambiarCamara() {
+// CAMBIAR CAMARA
+function cambiarCamara(){
   currentCamera = currentCamera === "environment" ? "user" : "environment";
   iniciarScanner();
 }
 
-function validarQR(data) {
+// VALIDAR MANUAL
+function validarManual(){
+  const codigo = document.getElementById("codigoManual").value.trim();
 
-  scanner.stop(); // 🔥 evita lecturas múltiples
+  if(!codigo){
+    alert("Ingresá un código");
+    return;
+  }
+
+  procesarValidacion(codigo);
+}
+
+// PROCESAR VALIDACIÓN
+function procesarValidacion(codigo){
+
+  if(scanner) scanner.stop();
 
   resultado.innerText = "⏳ Validando...";
   resultado.className = "";
 
-  fetch("https://script.google.com/macros/s/AKfycbxoH0OTGnOEOHFCXrxOKDjuflGaJ3pJZIjRitz_RfsJudlWYY04MRcfvw9ImEXoCQrf/exec?codigo=" + data)
+  fetch(URL + "?codigo=" + codigo)
   .then(res => res.text())
   .then(res => {
 
-    if (res.includes("VALIDO")) {
-      resultado.innerText = "✅ CUPÓN VÁLIDO";
+    if(res.includes("VALIDO")){
+
+      document.body.style.background = "#0f0";
+      resultado.innerText = "✅ VALIDADO";
+      resultado.style.fontSize = "36px";
       resultado.className = "ok";
 
-      if (navigator.vibrate) navigator.vibrate(200);
+      if(navigator.vibrate) navigator.vibrate([200,100,200]);
 
-    } else {
-      resultado.innerText = "❌ CUPÓN USADO / INVÁLIDO";
+    }else{
+
+      document.body.style.background = "#900";
+      resultado.innerText = "❌ RECHAZADO";
+      resultado.style.fontSize = "36px";
       resultado.className = "error";
     }
 
-    // 🔁 vuelve a escanear en 3 seg
-    setTimeout(() => {
-      resultado.innerText = "Apuntá al QR";
+    // RESET
+    setTimeout(()=>{
+      document.body.style.background = "#111";
+      resultado.innerText = "Listo para validar";
+      resultado.style.fontSize = "22px";
+      document.getElementById("codigoManual").value = "";
       iniciarScanner();
-    }, 3000);
+    },3000);
 
   })
-  .catch(() => {
+  .catch(()=>{
     resultado.innerText = "❌ Error conexión";
     resultado.className = "error";
 
-    setTimeout(() => iniciarScanner(), 3000);
+    setTimeout(()=>iniciarScanner(),3000);
   });
 }
 
-// iniciar
+// START
 iniciarScanner();
 </script>
 
