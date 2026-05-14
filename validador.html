@@ -3,189 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control GNC - Estación de Servicio</title>
+    <title>Validador Oficial GNC</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #f1c40f;
-            --bg-color: #ecf0f1;
-            --success-color: #27ae60;
-            --danger-color: #e74c3c;
+            --bg: #1a1a1a;
+            --card: #2d2d2d;
+            --text: #ffffff;
+            --accent: #f1c40f;
+            --success: #27ae60;
         }
 
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        
-        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 700px; }
-        
-        h2 { color: var(--primary-color); border-bottom: 3px solid var(--accent-color); padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
-        
-        .stats { display: flex; gap: 15px; margin: 20px 0; }
-        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #dee2e6; }
-        .stat-number { display: block; font-size: 28px; font-weight: bold; color: var(--primary-color); }
-        .stat-label { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
 
-        .table-wrapper { overflow-x: auto; margin-top: 20px; border-radius: 8px; border: 1px solid #eee; }
-        table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th { background: var(--primary-color); color: white; padding: 12px; text-align: left; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; color: #34495e; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
+        .container { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
-        .config-section { background: #fff9e6; padding: 20px; border-radius: 12px; margin-top: 25px; border: 1px solid #ffeaa7; }
+        h2 { text-align: center; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid var(--accent) !important; }
+
+        .stats-grid { display: flex; gap: 10px; margin: 20px 0; }
+        .stat-box { flex: 1; background: #3d3d3d; padding: 10px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
+        .stat-val { display: block; font-size: 20px; font-weight: bold; }
+        .stat-lbl { font-size: 10px; color: #bbb; text-transform: uppercase; }
+
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+        .history-table th { background: #3d3d3d; color: var(--accent); padding: 10px; text-align: left; }
+        .history-table td { padding: 10px; border-bottom: 1px solid #3d3d3d; }
+
+        /* SECCIÓN DE DESCARGA (LO QUE PEDISTE) */
+        .download-zone { 
+            margin-top: 30px; 
+            padding: 15px; 
+            background: #252525; 
+            border-radius: 10px; 
+            border: 1px dashed var(--accent);
+        }
+        
         .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #555; font-size: 14px; }
-        .input-group input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; outline: none; transition: 0.3s; }
-        .input-group input:focus { border-color: var(--accent-color); }
+        .input-group label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--accent); }
+        .input-group input { 
+            width: 100%; 
+            padding: 10px; 
+            background: #333; 
+            border: 1px solid #444; 
+            color: white; 
+            border-radius: 5px; 
+            box-sizing: border-box;
+        }
 
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
-        .btn-download { background: var(--success-color); color: white; }
+        .btn { 
+            width: 100%; 
+            padding: 15px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+        .btn-download { background: var(--success); color: white; margin-bottom: 10px; }
         .btn-download:hover { background: #219150; }
-        .btn-clear { background: #95a5a6; color: white; font-size: 13px; }
-        .btn-clear:hover { background: var(--danger-color); }
-
-        .empty-state { text-align: center; padding: 40px; color: #bdc3c7; font-style: italic; }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>
-        Validaciones Realizadas
-        <span style="font-size: 12px; background: var(--accent-color); padding: 5px 10px; border-radius: 20px; color: #000;">GNC PROMO</span>
-    </h2>
-    
-    <div class="stats">
-        <div class="stat-card">
-            <span id="total-cupones" class="stat-number">0</span>
-            <span class="stat-label">Cupones hoy</span>
+    <h2>Validador GNC</h2>
+
+    <div id="reader"></div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <span id="count-total" class="stat-val">0</span>
+            <span class="stat-lbl">Cupones</span>
         </div>
-        <div class="stat-card">
-            <span id="ultima-hora" class="stat-number" style="font-size: 18px; line-height: 28px;">--:--</span>
-            <span class="stat-label">Última validación</span>
+        <div class="stat-box">
+            <span id="last-time" class="stat-val">--:--</span>
+            <span class="stat-lbl">Última Hora</span>
         </div>
     </div>
 
-    <div class="table-wrapper">
-        <table id="miTabla">
-            <thead>
-                <tr>
-                    <th>Hora</th>
-                    <th>Patente</th>
-                    <th>Premio</th>
-                    <th>ID Código</th>
-                </tr>
-            </thead>
-            <tbody id="cuerpoTabla">
-                </tbody>
-        </table>
-        <div id="mensajeVacio" class="empty-state hidden">No hay validaciones registradas en este turno.</div>
-    </div>
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Hora</th>
+                <th>Patente</th>
+                <th>Premio</th>
+            </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+    </table>
 
-    <div class="config-section">
+    <div class="download-zone">
         <div class="input-group">
-            <label>Nombre del archivo para descargar:</label>
-            <input type="text" id="nombreArchivo" placeholder="Ej: Turno_Manana_14-05">
+            <label>Nombre del Archivo Personalizado:</label>
+            <input type="text" id="fileNameInput" placeholder="Ej: Lunes_Turno_Mañana">
         </div>
         
         <button onclick="descargarYLimpiar()" class="btn btn-download">
-            📥 DESCARGAR REPORTE Y LIMPIAR
-        </button>
-        
-        <button onclick="borrarSinDescargar()" class="btn btn-clear">
-            🗑️ Solo borrar historial (Sin descargar)
+            📥 Descargar Reporte y Limpiar
         </button>
     </div>
 </div>
 
 <script>
-    // Función para cargar los datos desde la memoria (LocalStorage)
-    function actualizarPantalla() {
-        const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
-        const cuerpo = document.getElementById('cuerpoTabla');
-        const mensajeVacio = document.getElementById('mensajeVacio');
-        const tabla = document.getElementById('miTabla');
-        
-        // Actualizar contador
-        document.getElementById('total-cupones').innerText = datos.length;
+    // Inicialización del Lector QR
+    const html5QrCode = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-        if (datos.length === 0) {
-            mensajeVacio.classList.remove('hidden');
-            tabla.classList.add('hidden');
-            document.getElementById('ultima-hora').innerText = "--:--";
-            return;
+    html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+
+    function onScanSuccess(decodedText) {
+        // Formato esperado: ID:GNC-XXXX|VAL:10% (Ejemplo)
+        // Aquí podrías agregar un sonido de "bip"
+        const ahora = new Date();
+        const horaString = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
+        
+        // Simulación de captura (aquí deberías parsear el QR si viene con datos específicos)
+        // Para este ejemplo, creamos un registro cada vez que escanea algo:
+        const nuevaValidacion = {
+            hora: horaString,
+            patente: "ESCANEADO", // Aquí podrías extraer la patente del QR si lo incluyes
+            premio: decodedText.split('|')[1]?.replace('VAL:', '') || "DESC",
+            id: decodedText.split('|')[0] || "ID-NEW"
+        };
+
+        guardarValidacion(nuevaValidacion);
+    }
+
+    function guardarValidacion(item) {
+        let historial = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        historial.push(item);
+        localStorage.setItem('gnc_validaciones', JSON.stringify(historial));
+        renderTable();
+    }
+
+    function renderTable() {
+        const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
+        const cuerpo = document.getElementById('log-body');
+        document.getElementById('count-total').innerText = datos.length;
+        
+        if(datos.length > 0) {
+            document.getElementById('last-time').innerText = datos[datos.length - 1].hora;
         }
 
-        mensajeVacio.classList.add('hidden');
-        tabla.classList.remove('hidden');
-        
-        // Mostrar última hora (del último dato ingresado)
-        const ultima = datos[datos.length - 1];
-        if (ultima) document.getElementById('ultima-hora').innerText = ultima.hora || "--:--";
-
-        // Invertir para que lo más nuevo salga arriba
-        const datosRev = [...datos].reverse();
-        cuerpo.innerHTML = datosRev.map(d => `
+        cuerpo.innerHTML = datos.reverse().slice(0, 5).map(d => `
             <tr>
                 <td>${d.hora}</td>
-                <td><strong>${d.patente}</strong></td>
+                <td style="color:var(--accent)">${d.patente}</td>
                 <td>${d.premio}</td>
-                <td><code style="background:#eee; padding:2px 5px; border-radius:4px;">${d.id}</code></td>
             </tr>
         `).join('');
     }
 
+    // --- FUNCIÓN DE DESCARGA Y LIMPIEZA (LO QUE PEDISTE) ---
     function descargarYLimpiar() {
         const datos = JSON.parse(localStorage.getItem('gnc_validaciones') || '[]');
         
         if (datos.length === 0) {
-            alert("No hay datos para exportar.");
+            alert("No hay datos para descargar.");
             return;
         }
 
-        // Definir nombre del archivo
-        let nombre = document.getElementById('nombreArchivo').value.trim();
-        if (!nombre) {
-            const hoy = new Date();
-            nombre = `Reporte_GNC_${hoy.getDate()}-${hoy.getMonth()+1}`;
+        // 1. Obtener nombre del archivo
+        let nombreManual = document.getElementById('fileNameInput').value.trim();
+        if (!nombreManual) {
+            const f = new Date();
+            nombreManual = `Reporte_GNC_${f.getDate()}-${f.getMonth()+1}`;
         }
 
-        // Crear CSV
-        let csvContent = "data:text/csv;charset=utf-8,Hora,Patente,Premio,ID_Codigo\n";
+        // 2. Crear CSV
+        let csv = "Hora,Patente,Premio,ID\n";
         datos.forEach(d => {
-            csvContent += `${d.hora},${d.patente},${d.premio},${d.id}\n`;
+            csv += `${d.hora},${d.patente},${d.premio},${d.id}\n`;
         });
 
-        // Descargar
-        const encodedUri = encodeURI(csvContent);
+        // 3. Descargar
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `${nombre}.csv`);
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${nombreManual}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        // Preguntar para limpiar
+        // 4. Limpiar historial tras confirmación
         setTimeout(() => {
-            if (confirm("¿El archivo se descargó bien? Presiona ACEPTAR para limpiar el historial del turno.")) {
+            if (confirm("¿Descarga completada? El historial se borrará para el siguiente turno.")) {
                 localStorage.removeItem('gnc_validaciones');
-                document.getElementById('nombreArchivo').value = "";
-                actualizarPantalla();
+                document.getElementById('fileNameInput').value = "";
+                renderTable();
             }
         }, 1000);
     }
 
-    function borrarSinDescargar() {
-        if (confirm("¿ESTÁS SEGURO? Se borrarán todas las validaciones sin guardar nada.")) {
-            localStorage.removeItem('gnc_validaciones');
-            actualizarPantalla();
-        }
-    }
-
-    // Al cargar la página, mostrar datos
-    window.onload = actualizarPantalla;
+    // Carga inicial
+    window.onload = renderTable;
 </script>
 
 </body>
