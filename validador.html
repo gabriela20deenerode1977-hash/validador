@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador GNC - Gestión de Turnos</title>
+    <title>Validador GNC - Rendición Actualizada</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 10px; text-align: center; color: #333; }
@@ -40,9 +40,9 @@
         <input type="number" id="montoCarga" placeholder="Ej: 5000" oninput="calcular()">
         
         <div id="result-display" class="result-box">
-            <div class="discount-text">Descuento aplicado: -$<span id="txtDescuento">0</span></div>
-            <div class="total-text">TOTAL A COBRAR: $<span id="txtTotal">0</span></div>
-            <button class="btn-confirm" onclick="finalizarCliente()">✅ GUARDAR Y SIGUIENTE</button>
+            <div class="discount-text">Descuento: -$<span id="txtDescuento">0</span></div>
+            <div class="total-text">A COBRAR: $<span id="txtTotal">0</span></div>
+            <button class="btn-confirm" onclick="finalizarCliente()">✅ FINALIZAR Y GUARDAR</button>
         </div>
     </div>
 
@@ -50,8 +50,8 @@
 
     <div class="history">
         <h3 style="font-size: 0.9em; display:flex; justify-content:space-between;">
-            Historial del Turno 
-            <button onclick="clearHistory()" style="background:#dc3545; color:white; padding:3px 8px; font-size:10px; border:none; border-radius:4px;">REINICIAR TURNO</button>
+            Historial de Turno 
+            <button onclick="clearHistory()" style="background:#dc3545; color:white; padding:3px 8px; font-size:10px; border:none; border-radius:4px;">REINICIAR</button>
         </h3>
         <div id="list"></div>
     </div>
@@ -77,7 +77,7 @@
     }
 
     function onScanSuccess(decodedText) {
-        let history = JSON.parse(localStorage.getItem('gnc_turno_v4') || '[]');
+        let history = JSON.parse(localStorage.getItem('gnc_final_v5') || '[]');
         let idQR = decodedText.split('|')[0]; 
 
         if (history.some(item => item.id === idQR)) {
@@ -90,13 +90,10 @@
 
         let match = decodedText.match(/(\d+)%/);
         if (match) {
-            let porcentaje = match[1]; 
-            document.getElementById('cuponValor').value = porcentaje + "%";
+            document.getElementById('cuponValor').value = match[1] + "%";
             document.getElementById('step-monto').classList.remove('step-disabled');
             document.getElementById('montoCarga').focus();
             html5QrCode.stop();
-        } else {
-            alert("QR no válido");
         }
     }
 
@@ -114,27 +111,33 @@
     }
 
     function finalizarCliente() {
-        let history = JSON.parse(localStorage.getItem('gnc_turno_v4') || '[]');
-        history.unshift({
+        // Leemos el historial más reciente
+        let history = JSON.parse(localStorage.getItem('gnc_final_v5') || '[]');
+        
+        const nuevoRegistro = {
             id: currentQR,
             porc: document.getElementById('cuponValor').value,
             carga: document.getElementById('montoCarga').value,
             desc: document.getElementById('txtDescuento').innerText,
             total: document.getElementById('txtTotal').innerText,
             time: new Date().toLocaleTimeString()
-        });
-        localStorage.setItem('gnc_turno_v4', JSON.stringify(history));
+        };
+
+        history.unshift(nuevoRegistro);
+        localStorage.setItem('gnc_final_v5', JSON.stringify(history));
         
+        // Reset interfaz
         document.getElementById('cuponValor').value = "";
         document.getElementById('montoCarga').value = "";
         document.getElementById('result-display').style.display = 'none';
         document.getElementById('step-monto').classList.add('step-disabled');
+        
         updateHistoryUI();
-        alert("✅ Cobro registrado.");
+        alert("✅ Cobro guardado correctamente.");
     }
 
     function updateHistoryUI() {
-        const history = JSON.parse(localStorage.getItem('gnc_turno_v4') || '[]');
+        const history = JSON.parse(localStorage.getItem('gnc_final_v5') || '[]');
         document.getElementById('list').innerHTML = history.map(item => `
             <div class="history-item">
                 <span>${item.time} - <b>${item.porc}</b></span>
@@ -143,40 +146,51 @@
         `).join('');
     }
 
-    function obtenerNombreTurno() {
-        const ahora = new Date();
-        const hora = ahora.getHours();
-        
-        if (hora >= 6 && hora < 14) return "Turno-Manana";
-        if (hora >= 14 && hora < 22) return "Turno-Tarde";
-        return "Turno-Noche";
-    }
-
     function exportarHistorial() {
-        const history = JSON.parse(localStorage.getItem('gnc_turno_v4') || '[]');
-        if (history.length === 0) return alert("Sin datos");
+        // FORZAMOS LA LECTURA DEL STORAGE AQUÍ
+        const history = JSON.parse(localStorage.getItem('gnc_final_v5') || '[]');
+        
+        if (history.length === 0) {
+            alert("No hay datos para exportar en este turno.");
+            return;
+        }
 
         const ahora = new Date();
-        const fechaStr = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
-        const nombreTurno = obtenerNombreTurno();
-        const nombreArchivo = `Rendicion_${fechaStr}_${nombreTurno}.csv`;
+        const fechaStr = ahora.toLocaleDateString().replace(/\//g, '-');
+        
+        // Lógica de turnos
+        const hora = ahora.getHours();
+        let turno = "Turno-Noche";
+        if (hora >= 6 && hora < 14) turno = "Turno-Manana";
+        else if (hora >= 14 && hora < 22) turno = "Turno-Tarde";
+
+        const nombreArchivo = `Rendicion_${fechaStr}_${turno}.csv`;
 
         let csv = "Hora,ID Cupon,Porcentaje,Carga Bruta,Descuento,Total Cobrado\n";
-        history.forEach(i => csv += `${i.time},${i.id},${i.porc},${i.carga},${i.desc},${i.total}\n`);
+        history.forEach(i => {
+            csv += `${i.time},${i.id},${i.porc},"${i.carga}","${i.desc}","${i.total}"\n`;
+        });
 
+        // Crear el archivo para descarga inmediata
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
+        a.style.display = 'none';
+        a.href = url;
         a.download = nombreArchivo;
+        document.body.appendChild(a);
         a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     }
 
     function clearHistory() {
-        if(confirm('¿Reiniciar el turno? Asegurate de haber descargado la rendición.')) {
-            localStorage.removeItem('gnc_turno_v4');
+        if(confirm('¿Reiniciar historial? Se borrarán todos los datos actuales del turno.')) {
+            localStorage.removeItem('gnc_final_v5');
             updateHistoryUI();
         }
     }
+    
     window.onload = updateHistoryUI;
 </script>
 </body>
