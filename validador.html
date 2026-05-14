@@ -3,141 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador GNC - Estación</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <title>Scanner GNC</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --accent: #f1c40f; --bg: #1a1a1a; --card: #2d2d2d; }
-        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; text-align: center; max-width: 450px; margin: auto; }
-        #reader { width: 100%; border-radius: 10px; background: #000; margin: 15px 0; min-height: 250px; }
-        .calc-box { background: #3d3d3d; padding: 15px; border-radius: 10px; text-align: left; margin-top: 15px; }
-        input { width: 100%; padding: 15px; border-radius: 8px; border: none; font-size: 22px; background: #111; color: #fff; box-sizing: border-box; margin: 10px 0; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 18px; }
-        .total { font-size: 26px; font-weight: bold; color: #2ecc71; border-top: 1px solid #555; padding-top: 10px; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-scan { background: var(--accent); color: #000; }
-        .btn-save { background: #2ecc71; color: white; }
-        #seccion-cobro, #seccion-stats { display: none; }
-        .hidden { display: none; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
+        #reader { width: 100%; max-width: 400px; margin: 20px auto; background: #000; border-radius: 10px; }
+        .btn { padding: 15px 30px; background: #f1c40f; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        #resultado { display: none; background: #2d2d2d; padding: 20px; border-radius: 15px; margin-top: 20px; }
+        input { width: 80%; padding: 10px; margin: 10px 0; font-size: 18px; }
     </style>
 </head>
 <body>
+    <h2>Validador de Cupones</h2>
+    <div id="reader"></div>
+    <button id="btn-start" class="btn" onclick="iniciar()">📷 ACTIVAR CÁMARA</button>
 
-<div class="card">
-    <div id="seccion-scanner">
-        <h2>Validar Cupón GNC</h2>
-        <div id="reader"></div>
-        <button id="btn-iniciar" class="btn btn-scan" onclick="startScanner()">📷 ACTIVAR CÁMARA</button>
-        <button class="btn" style="background:#3498db; color:white; margin-top:20px;" onclick="verStats()">📊 CIERRE DE TURNO</button>
+    <div id="resultado">
+        <h3 style="color: #2ecc71;">CUPÓN LEÍDO</h3>
+        <p id="info-cupon"></p>
+        <label>Monto Carga ($):</label><br>
+        <input type="number" id="monto" oninput="calcular()">
+        <h2 id="total-pagar">Total: $0</h2>
+        <button class="btn" style="background:#2ecc71" onclick="location.reload()">NUEVA VENTA</button>
     </div>
 
-    <div id="seccion-cobro">
-        <h2 style="color: var(--accent);">Cupón Validado</h2>
-        <div class="calc-box">
-            <div class="row"><span>🚗 Patente:</span> <b id="out-patente">---</b></div>
-            <div class="row"><span>🎁 Descuento:</span> <b id="out-premio">0%</b></div>
-            <hr>
-            <label>Monto Surtidor ($):</label>
-            <input type="number" id="in-monto" placeholder="Ej: 5000" oninput="recalcular()">
-            <div class="row"><span>Ahorro:</span> <span id="out-ahorro" style="color:#e74c3c">-$0</span></div>
-            <div class="row total"><span>A PAGAR:</span> <span id="out-final">$0</span></div>
-        </div>
-        <button class="btn btn-save" onclick="guardarVenta()">💾 REGISTRAR</button>
-        <button class="btn" style="background:#666; color:white" onclick="cancelar()">VOLVER</button>
-    </div>
-
-    <div id="seccion-stats">
-        <h2>Resumen del Turno</h2>
-        <div class="calc-box" style="text-align:center;">
-            <p>Total Descontado:</p>
-            <h1 id="stat-desc" style="color:#e74c3c; margin:5px 0;">$0</h1>
-            <p>Total en Caja:</p>
-            <h1 id="stat-neto" style="color:#2ecc71; margin:5px 0;">$0</h1>
-            <p>Cupones: <b id="stat-cant">0</b></p>
-        </div>
-        <button class="btn btn-scan" onclick="cancelar()">VOLVER</button>
-        <button class="btn" style="background:#c0392b; color:white; margin-top:30px;" onclick="resetTurno()">REINICIAR TURNO</button>
-    </div>
-</div>
-
-<script>
-    let scanner;
-    let cupoActual = {};
-    let ahorroGlobal = 0;
-    let netoGlobal = 0;
-
-    function startScanner() {
-        document.getElementById('btn-iniciar').classList.add('hidden');
-        scanner = new Html5Qrcode("reader");
-        
-        scanner.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: 250 },
+    <script>
+        let porcentaje = 0;
+        function iniciar() {
+            document.getElementById('btn-start').style.display = 'none';
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
             (text) => {
-                scanner.stop().then(() => {
-                    procesarQR(text);
-                });
-            },
-            (err) => { }
-        ).catch(err => {
-            alert("Error: No se pudo acceder a la cámara.");
-            document.getElementById('btn-iniciar').classList.remove('hidden');
-        });
-    }
-
-    function procesarQR(text) {
-        try {
-            const data = {};
-            text.split('|').forEach(item => {
-                const [k, v] = item.split(':');
-                data[k] = v;
+                scanner.stop();
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('resultado').style.display = 'block';
+                
+                // Extraer datos simple
+                const data = text.split('|');
+                document.getElementById('info-cupon').innerText = text.replace(/\|/g, ' - ');
+                porcentaje = parseInt(text.split('PREMIO:')[1]) || 0;
             });
-            cupoActual = data;
-            document.getElementById('out-patente').innerText = data.PAT || "---";
-            document.getElementById('out-premio').innerText = data.PREMIO || "0%";
-            document.getElementById('seccion-scanner').style.display = 'none';
-            document.getElementById('seccion-cobro').style.display = 'block';
-        } catch(e) {
-            alert("QR inválido.");
-            cancelar();
         }
-    }
 
-    function recalcular() {
-        const total = parseFloat(document.getElementById('in-monto').value) || 0;
-        const descPct = parseInt(cupoActual.PREMIO) || 0;
-        ahorroGlobal = (total * descPct) / 100;
-        netoGlobal = total - ahorroGlobal;
-        document.getElementById('out-ahorro').innerText = "-$" + ahorroGlobal.toFixed(2);
-        document.getElementById('out-final').innerText = "$" + netoGlobal.toFixed(2);
-    }
-
-    function guardarVenta() {
-        if (netoGlobal <= 0) return alert("Ingresá el monto");
-        let s = JSON.parse(localStorage.getItem('stats_gnc') || '{"d":0, "n":0, "c":0}');
-        s.d += ahorroGlobal; s.n += netoGlobal; s.c += 1;
-        localStorage.setItem('stats_gnc', JSON.stringify(s));
-        alert("Venta guardada");
-        cancelar();
-    }
-
-    function verStats() {
-        let s = JSON.parse(localStorage.getItem('stats_gnc') || '{"d":0, "n":0, "c":0}');
-        document.getElementById('stat-desc').innerText = "$" + s.d.toFixed(2);
-        document.getElementById('stat-neto').innerText = "$" + s.n.toFixed(2);
-        document.getElementById('stat-cant').innerText = s.c;
-        document.getElementById('seccion-scanner').style.display = 'none';
-        document.getElementById('seccion-stats').style.display = 'block';
-    }
-
-    function resetTurno() {
-        if(confirm("¿Borrar datos del turno?")) {
-            localStorage.setItem('stats_gnc', '{"d":0, "n":0, "c":0}');
-            verStats();
+        function calcular() {
+            const m = document.getElementById('monto').value || 0;
+            const final = m - (m * porcentaje / 100);
+            document.getElementById('total-pagar').innerText = "Total a Cobrar: $" + final.toFixed(2);
         }
-    }
-
-    function cancelar() { location.reload(); }
-</script>
+    </script>
 </body>
 </html>
